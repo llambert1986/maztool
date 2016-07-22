@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+
+<meta name="viewport" content="initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Palm Beach MPO SERPM 7.062 2040 MAZ Forecast</title>
+
+<link rel="stylesheet" href="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.css" />
+
+<style>
+  html, body, #mapid{
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+  }
+
+  .info {
+    padding: 6px 8px;
+    font: 14px/16px Arial, Helvetica, sans-serif;
+    background: white;
+    background: rgba(255,255,255,0.8);
+    box-shadow: 0 0 15px rgba(0,0,0,0.2);
+    border-radius: 5px;
+}
+.info h4 {
+    margin: 0 0 5px;
+    color: #777;
+}
+
+.legend {
+    line-height: 18px;
+    color: #555;
+}
+.legend i {
+    width: 18px;
+    height: 18px;
+    float: left;
+    margin-right: 8px;
+    opacity: 0.7;
+}
+</style>
+
+</head>  
+<body>
+  <div id="mapid"></div>
+  <script src="http://cdn.leafletjs.com/leaflet/v0.7.7/leaflet.js"></script>
+  <script src="http://www.defiantimage.com/data/pbmpo_s7maz_2040_Q22016.js"></script>
+<script>
+var osmLink = '<a href="http://openstreetmap.org">OpenStreetMap</a>',
+            thunLink = '<a href="http://thunderforest.com/">Thunderforest</a>';
+        
+        var osmUrl = 'http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+            osmAttrib = '&copy; ' + osmLink + ' Contributors';
+
+        var osmMap = L.tileLayer(osmUrl, {attribution: osmAttrib});
+var map = L.map('mapid').setView([26.680, -80.343], 11);
+    mapLink = 
+        '<a href="http://openstreetmap.org">OpenStreetMap</a>';
+//var MapQuestOpen_Aerial = L.tileLayer('http://otile{s}.mqcdn.com/tiles/1.0.0/{type}/{z}/{x}/{y}.{ext}', {
+//    type: 'sat',
+//    ext: 'jpg',
+//    attribution: 'Tiles Courtesy of <a href="http://www.mapquest.com/">MapQuest</a> &mdash; Portions Courtesy NASA/JPL-Caltech and U.S. Depart. of Agriculture, Farm Service Agency',
+//    subdomains: '1234'
+//})
+//.addTo(map);
+
+  //Add GeoJSON
+function getColor(d) {
+    return d > 3000 ? '#800026' :
+           d > 2000  ? '#BD0026' :
+           d > 1000  ? '#E31A1C' :
+           d > 500  ? '#FC4E2A' :
+           d > 100   ? '#FD8D3C' :
+           d > 50   ? '#FEB24C' :
+           d > 1   ? '#FED976' :
+                      '#000000';
+}
+
+function style(feature) {
+    return {
+        fillColor: getColor(feature.properties.emp_tot),
+        weight: 2,
+        opacity: 1,
+        color: 'white',
+        dashArray: '3',
+        fillOpacity: 0.4
+    };
+}
+
+L.geoJson(mazData, {style: style});
+
+function highlightFeature(e) {
+    var layer = e.target;
+    info.update(layer.feature.properties);
+
+    layer.setStyle({
+        weight: 5,
+        color: '#666',
+        dashArray: '',
+        fillOpacity: 0.7
+    });
+
+    if (!L.Browser.ie && !L.Browser.opera) {
+        layer.bringToFront();
+    }
+}
+
+function resetHighlight(e) {
+    geojson.resetStyle(e.target);
+    info.update();
+}
+
+var geojson;
+// ... our listeners
+geojson = L.geoJson(mazData);
+
+//function zoomToFeature(e) {
+    //map.fitBounds(e.target.getBounds());
+//}
+    
+function onEachFeature(feature, layer) {
+    layer.on({
+        mouseover: highlightFeature,
+        mouseout: resetHighlight,
+        //click: zoomToFeature
+    });
+    if (feature.properties) {
+        // Create an input
+    var input = L.DomUtil.get(feature.properties);
+    // Set a feature property as value
+    input.value = feature.properties.emp_tot;
+    // Add a listener to watch for change on input
+    L.DomEvent.addListener(input, 'change', function () {
+        // Input changed, change property value
+        feature.properties.emp_tot = input.value;
+    })
+    layer.bindPopup("<br><b>Commercial Employees: </b>" + feature.properties.emp_com + "</br></u><br> <b>Service Employees: </b>" + feature.properties.emp_ser
+            + "</br></b></u><br> <b>Industrial Employees: </b>" + feature.properties.emp_ind , {"offset":  [1, -1]});
+        }
+}
+                                           
+geojson = L.geoJson(mazData, {
+    style: style,
+    onEachFeature: onEachFeature
+}).addTo(map);
+
+var overlayMaps = {
+    "MAZs": geojson
+};
+    var baseLayers = {
+            "OSM Mapnik": osmMap
+        };
+
+L.control.layers(baseLayers, overlayMaps).addTo(map);
+
+var info = L.control();
+
+info.onAdd = function (map) {
+    this._div = L.DomUtil.create('div', 'info'); // create a div with a class "info"
+    this.update();
+    return this._div;
+};
+
+// method that we will use to update the control based on feature properties passed
+info.update = function (props) {
+    this._div.innerHTML = '<h4>Palm Beach 2040 Forecasted<br>Employment by MAZ</br></h4>' +  (props ?
+        '<b>MAZ ' + props.maz2010 + '</b><br />' + props.emp_tot + ' workers'
+        : 'Hover over a maz');
+};
+
+info.addTo(map);
+
+//Legend
+var legend = L.control({position: 'bottomright'});
+
+legend.onAdd = function (map) {
+
+    var div = L.DomUtil.create('div', 'info legend'),
+        grades = [0, 1, 50, 100, 500, 1000, 2000, 3000],
+        labels = [];
+
+    // loop through our density intervals and generate a label with a colored square for each interval
+    for (var i = 0; i < grades.length; i++) {
+        div.innerHTML +=
+            '<i style="background:' + getColor(grades[i] + 1) + '"></i> ' +
+            grades[i] + (grades[i + 1] ? '&ndash;' + grades[i + 1] + '<br>' : '+');
+    }
+
+    return div;
+};
+
+legend.addTo(map);
+</script>
+</body>
+</html>
